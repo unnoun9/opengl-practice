@@ -3,7 +3,5 @@
 *.exe
 *.out
 *.app
-bin
-imgui.ini
 settings.json
 c_cpp_properties.json
