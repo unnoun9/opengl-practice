@@ -1,7 +1,6 @@
+.vscode
 *.o
 *.obj
 *.exe
 *.out
 *.app
-settings.json
-c_cpp_properties.json

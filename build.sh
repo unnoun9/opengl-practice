@@ -1,3 +1,3 @@
-g++ -std=c++17 -I$(pwd) -o Application src/*.cpp src/glad.c -lglfw3
+g++ -I./glew/include -L./glew/lib/x64 -DGLEW_STATIC -o application src/*.cpp -lglew32s -lglfw3 -lopengl32
 
-./Application
+./application && rm application.exe
