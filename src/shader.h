@@ -7,6 +7,8 @@
 #include <string>
 #include <sstream>
 
+#include "debug.h"
+
 struct shader_src { std::string vertex_src, fragment_src; };
 
 static unsigned int create_shader(const std::string& vertex_shader_src, const std::string& fragment_shader_src);
@@ -15,38 +17,38 @@ static shader_src parse_shader(const std::string& filepath);
 
 static unsigned int create_shader(const std::string& vertex_shader_src, const std::string& fragment_shader_src)
 {
-    unsigned int program = glCreateProgram();
+    CALL(unsigned int program = glCreateProgram());
     unsigned int vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex_shader_src);
     unsigned int fragment_shader = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_src);
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-    glLinkProgram(program);
+    CALL(glAttachShader(program, vertex_shader));
+    CALL(glAttachShader(program, fragment_shader));
+    CALL(glLinkProgram(program));
     // add glDetachShader calls here?
-    glValidateProgram(program);
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
+    CALL(glValidateProgram(program));
+    CALL(glDeleteShader(vertex_shader));
+    CALL(glDeleteShader(fragment_shader));
     return program;
 }
 
 static unsigned int compile_shader(unsigned int type, const std::string& src)
 {
-    unsigned int id = glCreateShader(type);
+    CALL(unsigned int id = glCreateShader(type));
     const char* src_ptr = src.c_str();
-    glShaderSource(id, 1, &src_ptr, nullptr);
-    glCompileShader(id);
+    CALL(glShaderSource(id, 1, &src_ptr, nullptr));
+    CALL(glCompileShader(id));
     
     // syntax error etc checking
     int result;
-    glGetShaderiv(id, GL_COMPILE_STATUS, &result);  // 2nd argument specifies which parameter we want to query; iv in the name means integer and vector
+    CALL(glGetShaderiv(id, GL_COMPILE_STATUS, &result));  // 2nd argument specifies which parameter we want to query; iv in the name means integer and vector
     if (result == GL_FALSE)
     {
         int message_length;
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &message_length);
+        CALL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &message_length));
         char* message = (char*)alloca(message_length * sizeof(char));
-        glGetShaderInfoLog(id, message_length, &message_length, message);
+        CALL(glGetShaderInfoLog(id, message_length, &message_length, message));
         std::cout << "Failed to compile " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader" << std::endl;
         std::cout << message << std::endl;
-        glDeleteShader(id);
+        CALL(glDeleteShader(id));
         return 0;
     }
 
