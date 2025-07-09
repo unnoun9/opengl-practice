@@ -11,12 +11,12 @@
     x;\
     assert(gl_log_call() && #x);
 
-static void gl_clear_error()
+void gl_clear_error()
 {
     while (glGetError() != GL_NO_ERROR);
 }
 
-static bool gl_log_call()
+bool gl_log_call()
 {
     while (GLenum error = glGetError())
     {
