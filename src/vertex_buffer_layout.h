@@ -26,7 +26,7 @@ struct vertex_buffer_element
 
 struct vertex_buffer_layout
 {
-    std::vector<vertex_buffer_element> elements;
+    std::vector<vertex_buffer_element> elements; // each element contains info on one attribute of the buffer this layout targets
     unsigned int stride;
 
     vertex_buffer_layout()

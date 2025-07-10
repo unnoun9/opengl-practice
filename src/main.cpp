@@ -8,6 +8,7 @@
 #include "vertex_buffer.h"
 #include "index_buffer.h"
 #include "vertex_array.h"
+#include "renderer.h"
 
 int main(void)
 {
@@ -65,14 +66,16 @@ int main(void)
     index_buffer ib(indices, 6);
 
     // tell the gpu how to use the data we gave it: shaders! we compile and shaders (vertex and fragment in this case) in to one program, which instructs the gpu
-    shader_src src = parse_shader("shaders/basic.glsl");
-    unsigned int shader = create_shader(src.vertex_src, src.fragment_src);
-    CALL(glUseProgram(shader));   // bind the shader
+    shader shader("shaders/basic.glsl");
+    shader.bind();  // bind the shader
+    shader.set_uniform_4f("u_color", 0.8f, 0.3f, 0.8f, 1.0f);   // uniforms: data sent from cpu to gpu at the correct location
 
-    // uniforms: data sent from cpu to gpu at the correct location
-    CALL(int location = glGetUniformLocation(shader, "u_color")); // location is more like an id that opengl assigns to each uniform in the shader program
-    CALL(ASSERT(location != -1)); // returned location is -1 if we made a type or something or uniform is unused
-    CALL(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
+    va.unbind();
+    vb.unbind();
+    ib.unbind();
+    shader.unbind();
+
+    renderer renderer;
 
     float r = 0.0f;
     float dr = 0.05f;
@@ -81,16 +84,12 @@ int main(void)
     while (!glfwWindowShouldClose(window))
     {
         // render here
-        CALL(glClear(GL_COLOR_BUFFER_BIT));
+        renderer.clear();
         
-        CALL(glUseProgram(shader));
-        CALL(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+        shader.bind();
+        shader.set_uniform_4f("u_color", r, 0.3f, 0.8f, 1.0f);
+        renderer.draw(va, ib, shader);
 
-        va.bind();
-
-        // 5. issue draw call for to draw the index buffer we specified; the selected/bound buffer is drawn; here we tell gpu what primitive to draw (triangle in this case), number of indices to draw, type of indices, and the a pointer to the indices which isn't required here since we have bound it already above
-        CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));  // by contrast, glDrawArrays draws the vertices specified in the vertex buffer sequentially, while glDrawElements draws vertices in the order specified by the index buffer
-        
         if (r > 1.0f) dr = -0.05f;
         else if (r < 0.0f) dr = 0.05f;
         r += dr;
@@ -101,8 +100,6 @@ int main(void)
         // poll for and process events
         glfwPollEvents();
     }
-
-    glDeleteProgram(shader);
     } // end scope
     glfwTerminate();
     return 0;
