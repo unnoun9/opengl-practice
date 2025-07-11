@@ -32,7 +32,7 @@ int main(void)
 
     // create a windowed mode window and its opengl context
     float aspect_ratio = 16.0f / 9.0f;
-    int window_width = 960;
+    int window_width = 1280;
     int window_height = int(window_width / aspect_ratio);
     window_height = (window_height < 1) ? 1 : window_height;
     window = glfwCreateWindow(window_width, window_height, "asfkljashdjklfashdf", NULL, NULL);
@@ -64,12 +64,11 @@ int main(void)
 
     { // start scope
     float centerx = window_width / 2.0f, centery = window_height / 2.0f;
-    float halfw = 200 / 2.0f, halfh = 200 / 2.0f;
     float positions[] = {
-        centerx - halfw, centery - halfh, 0.0f, 0.0f,
-        centerx + halfw, centery - halfh, 1.0f, 0.0f,
-        centerx + halfw, centery + halfh, 1.0f, 1.0f,
-        centerx - halfw, centery + halfh, 0.0f, 1.0f
+        -50.0f, -50.0f, 0.0f, 0.0f,
+         50.0f, -50.0f, 1.0f, 0.0f,
+         50.0f,  50.0f, 1.0f, 1.0f,
+        -50.0f,  50.0f, 0.0f, 1.0f
     };
 
     unsigned int indices[] = {
@@ -94,16 +93,15 @@ int main(void)
     va.add_buffer(vb, layout);
     index_buffer ib(indices, 6);
 
-    // model-view-projection matrices
+    // model view projection matrices
     glm::mat4 proj = glm::ortho(0.0f, (float)window_width, 0.0f, (float)window_height, -1.0f, 1.0f); // size of our window
-    glm::mat4 view = glm::translate(glm::mat4(1.0), glm::vec3(-100.0f, 0.0f, 0.0f)); // translate everything 100px to the left to simulate camera moving 100px to the right
-    glm::mat4 model = glm::translate(glm::mat4(1.0), glm::vec3(200.0f, 200.0f, 0.0f)); // translate everything 100px to the left to simulate camera moving 100px to the right
-    glm::mat4 mvp = proj * view * model; // multiplication is in "m * v * p" order when the matrices are row-major, but here since they are colum-major, the order is reverse (opengl and glm work with column-major); when rewatching 3b1b's LA videos, think about mvp vs pvm order -- order of transformation
+    glm::mat4 view = glm::translate(glm::mat4(1.0), glm::vec3(0,0,0)); // translate everything 100px to the left to simulate camera moving 100px to the right
+    glm::vec3 translationa(centerx - 100, centery, 0.0f);
+    glm::vec3 translationb(centerx + 100, centery, 0.0f);
 
     // tell the gpu how to use the data we gave it: shaders! we compile and shaders (vertex and fragment in this case) in to one program, which instructs the gpu
     shader shader("shaders/basic.glsl");
     shader.bind();  // bind the shader
-    shader.set_uniform_mat4f("u_mvp", mvp);
     
     // texture
     texture texture("textures/miku.jpg");
@@ -134,17 +132,32 @@ int main(void)
         }
 
         shader.bind();
-        renderer.draw(va, ib, shader);
+
+        { // draw object A, using translationa
+            // translate everything by the translation vector and then rotate everything by rotation_angle
+            // multiplication is in "m * v * p" order when the matrices are row-major, but here since they are colum-major, the order is reverse (opengl and glm work with column-major); when rewatching 3b1b's LA videos, think about mvp vs pvm order -- order of transformation
+            glm::mat4 model = glm::translate(glm::mat4(1.0), translationa); 
+            glm::mat4 mvp = proj * view * model; 
+            shader.set_uniform_mat4f("u_mvp", mvp);
+            renderer.draw(va, ib, shader);
+        }
+
+        { // draw object B, using translationb
+            glm::mat4 model = glm::translate(glm::mat4(1.0), translationb);
+            glm::mat4 mvp = proj * view * model; 
+            shader.set_uniform_mat4f("u_mvp", mvp);
+            renderer.draw(va, ib, shader);
+        }
 
         // imgui window
-        ImGui::Begin("asdjklfhjklhasljka");
-        ImGui::Text("%.1fFPS", ImGui::GetIO().Framerate);
-        ImGui::Separator();
+        ImGui::SliderFloat3("Translate object A", &translationa.x, 0, window_width, "%.0f");
+        ImGui::SliderFloat3("Translate object B", &translationb.x, 0, window_width, "%.0f");
+        ImGui::NewLine();
+        ImGui::Text("%.0fFPS", ImGui::GetIO().Framerate);
         ImGui::Text("Vendor: %s", glGetString(GL_VENDOR));
         ImGui::Text("Renderer: %s", glGetString(GL_RENDERER));
         ImGui::Text("OpenGL Version: %s", glGetString(GL_VERSION));
         ImGui::Text("Shading Language: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
-        ImGui::End();
 
         // render the imgui elements
         ImGui::Render();

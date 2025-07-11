@@ -24,7 +24,7 @@ struct vertex_array
         {
             const auto& element = layout.elements[i];
             CALL(glEnableVertexAttribArray(i));
-            CALL(glVertexAttribPointer(i, element.count, element.type, element.normalized, layout.stride, (const void*)offset));
+            CALL(glVertexAttribPointer(i, element.count, element.type, element.normalized, layout.stride, (void*)(uintptr_t)offset));
             offset += element.count * vertex_buffer_element::get_size_of_type(element.type);
         }
     }

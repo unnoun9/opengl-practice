@@ -1,4 +1,4 @@
-# builds the project and runs it; assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
+# builds the program and runs it; assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
 
 INCLUDE_PATH="-I./dependencies/glew/include -I./dependencies/stb_image -I./dependencies/imgui"
 LIB_PATH="-L./dependencies/glew/lib/x64"
