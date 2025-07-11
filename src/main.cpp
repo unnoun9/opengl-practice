@@ -1,3 +1,7 @@
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -27,7 +31,11 @@ int main(void)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // create a windowed mode window and its opengl context
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    float aspect_ratio = 16.0f / 9.0f;
+    int window_width = 960;
+    int window_height = int(window_width / aspect_ratio);
+    window_height = (window_height < 1) ? 1 : window_height;
+    window = glfwCreateWindow(window_width, window_height, "asfkljashdjklfashdf", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -43,17 +51,25 @@ int main(void)
     if (glewInit() != GLEW_OK)
         std::cout << "Error calling glewInit()" << std::endl;
     
-    std::cout << "Vendor: " << glGetString(GL_VENDOR) << std::endl;
-    std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
-    std::cout << "Version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "Shading Language: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n" << std::endl;
+    // imgui initialization boiler plate code
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
+    // apparently i had to add this to fix the stretching of the square when aspect ratio was 1; idk why it was happening, since it doesnt make sense because orthographic projection matrix is correctly setup and was supposed to prevent this stretching
+    glViewport(0,0,window_width,window_height);
 
     { // start scope
+    float centerx = window_width / 2.0f, centery = window_height / 2.0f;
+    float halfw = 200 / 2.0f, halfh = 200 / 2.0f;
     float positions[] = {
-        -0.5f, -0.5f, 0.0f, 0.0f,
-         0.5f, -0.5f, 1.0f, 0.0f,
-         0.5f,  0.5f, 1.0f, 1.0f,
-        -0.5f,  0.5f, 0.0f, 1.0f
+        centerx - halfw, centery - halfh, 0.0f, 0.0f,
+        centerx + halfw, centery - halfh, 1.0f, 0.0f,
+        centerx + halfw, centery + halfh, 1.0f, 1.0f,
+        centerx - halfw, centery + halfh, 0.0f, 1.0f
     };
 
     unsigned int indices[] = {
@@ -78,14 +94,16 @@ int main(void)
     va.add_buffer(vb, layout);
     index_buffer ib(indices, 6);
 
-    // an orthographic projection matrix
-    glm::mat4 ortho = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f); // 4 units wide, 3 units tall because our current window aspect ratio is 4:3
+    // model-view-projection matrices
+    glm::mat4 proj = glm::ortho(0.0f, (float)window_width, 0.0f, (float)window_height, -1.0f, 1.0f); // size of our window
+    glm::mat4 view = glm::translate(glm::mat4(1.0), glm::vec3(-100.0f, 0.0f, 0.0f)); // translate everything 100px to the left to simulate camera moving 100px to the right
+    glm::mat4 model = glm::translate(glm::mat4(1.0), glm::vec3(200.0f, 200.0f, 0.0f)); // translate everything 100px to the left to simulate camera moving 100px to the right
+    glm::mat4 mvp = proj * view * model; // multiplication is in "m * v * p" order when the matrices are row-major, but here since they are colum-major, the order is reverse (opengl and glm work with column-major); when rewatching 3b1b's LA videos, think about mvp vs pvm order -- order of transformation
 
     // tell the gpu how to use the data we gave it: shaders! we compile and shaders (vertex and fragment in this case) in to one program, which instructs the gpu
     shader shader("shaders/basic.glsl");
     shader.bind();  // bind the shader
-    shader.set_uniform_4f("u_color", 0.8f, 0.3f, 0.8f, 1.0f);   // uniforms: data sent from cpu to gpu at the correct location
-    shader.set_uniform_mat4f("u_projection", ortho);
+    shader.set_uniform_mat4f("u_mvp", mvp);
     
     // texture
     texture texture("textures/miku.jpg");
@@ -99,22 +117,38 @@ int main(void)
 
     renderer renderer;
 
-    float r = 0.0f;
-    float dr = 0.05f;
-
     // loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
         // render here
         renderer.clear();
         
+        // boilerplate code to tell opengl that a new frame is about to begin
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (!io.WantCaptureMouse)
+        {
+            // input handling
+        }
+
         shader.bind();
-        shader.set_uniform_4f("u_color", r, 0.3f, 0.8f, 1.0f);
         renderer.draw(va, ib, shader);
 
-        if (r > 1.0f) dr = -0.05f;
-        else if (r < 0.0f) dr = 0.05f;
-        r += dr;
+        // imgui window
+        ImGui::Begin("asdjklfhjklhasljka");
+        ImGui::Text("%.1fFPS", ImGui::GetIO().Framerate);
+        ImGui::Separator();
+        ImGui::Text("Vendor: %s", glGetString(GL_VENDOR));
+        ImGui::Text("Renderer: %s", glGetString(GL_RENDERER));
+        ImGui::Text("OpenGL Version: %s", glGetString(GL_VERSION));
+        ImGui::Text("Shading Language: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
+        ImGui::End();
+
+        // render the imgui elements
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // swap front and back buffers 
         glfwSwapBuffers(window);
@@ -123,6 +157,12 @@ int main(void)
         glfwPollEvents();
     }
     } // end scope
+
+    // boilerplate code to delete all imgui stuff
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     glfwTerminate();
     return 0;
 }

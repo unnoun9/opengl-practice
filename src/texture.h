@@ -44,8 +44,7 @@ struct texture
         }
         else
         {
-            std::cout << "\nFailed to load texture" << std::endl;
-            std::cout << stbi_failure_reason() << std::endl;
+            std::cout << "\nFailed to load texture: " << stbi_failure_reason() << std::endl;
             ASSERT(0);
         }
     }
