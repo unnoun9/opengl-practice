@@ -10,6 +10,8 @@
 
 #include "debug.h"
 
+#include "glm/glm.hpp"
+
 struct shader_program_src { std::string vertex_src, fragment_src; };
 
 struct shader
@@ -39,14 +41,24 @@ struct shader
     }
 
     // set uniforms
-    void set_uniform_4f(const std::string& name, float v0, float v1, float v2, float v3)
+    void set_uniform_1i(const std::string& name, int value)
     {
-        CALL(glUniform4f(get_uniform_location(name), v0, v1, v2, v3));
+        CALL(glUniform1i(get_uniform_location(name), value));
     }
 
     void set_uniform_1f(const std::string& name, float value)
     {
         CALL(glUniform1f(get_uniform_location(name), value));
+    }
+
+    void set_uniform_4f(const std::string& name, float v0, float v1, float v2, float v3)
+    {
+        CALL(glUniform4f(get_uniform_location(name), v0, v1, v2, v3));
+    }
+
+    void set_uniform_mat4f(const std::string& name, const glm::mat4& matrix)
+    {
+        CALL(glUniformMatrix4fv(get_uniform_location(name), 1, GL_FALSE, &matrix[0][0]));
     }
 
 private:
@@ -130,7 +142,7 @@ private:
         return { shader_streams[VERTEX].str(), shader_streams[FRAGMENT].str() };
     }
 
-    unsigned int get_uniform_location(const std::string& name)
+    int get_uniform_location(const std::string& name)
     {
         // location is more like an id that opengl assigns to each uniform in the shader program
         // returned location is -1 if we made a typo or something or uniform is unused
