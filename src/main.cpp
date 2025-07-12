@@ -14,15 +14,12 @@
 #include "vertex_array.h"
 #include "renderer.h"
 #include "texture.h"
-
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
+#include "tests/tests.h"
 
 int main(void)
 {
     GLFWwindow* window;
 
-    // initialize the library
     if (!glfwInit())
         return -1;
     
@@ -30,7 +27,6 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // create a windowed mode window and its opengl context
     float aspect_ratio = 16.0f / 9.0f;
     int window_width = 1280;
     int window_height = int(window_width / aspect_ratio);
@@ -42,10 +38,9 @@ int main(void)
         return -1;
     }
     
-    // make the window's context current
     glfwMakeContextCurrent(window);
     
-    // pass the number of screen refreshed to wait before swapping the frong and back buffers; passing 1 enables vertical synchronization (v-sync)
+    // enable v-sync
     glfwSwapInterval(1);
 
     if (glewInit() != GLEW_OK)
@@ -63,110 +58,86 @@ int main(void)
     glViewport(0,0,window_width,window_height);
 
     { // start scope
-    float centerx = window_width / 2.0f, centery = window_height / 2.0f;
-    float positions[] = {
-        -50.0f, -50.0f, 0.0f, 0.0f,
-         50.0f, -50.0f, 1.0f, 0.0f,
-         50.0f,  50.0f, 1.0f, 1.0f,
-        -50.0f,  50.0f, 0.0f, 1.0f
-    };
 
-    unsigned int indices[] = {
-        0, 1, 2,
-        2, 3, 0
-    };
-
-    // blending - similar to blend modes in image manipulation where we blend top and bottom layer's color
     CALL(glEnable(GL_BLEND));
-    // first param is what we multiply each r,g,b component of the source (output from fragment) color
-    // second param is what we multiply each r,g,b component of the destination (the target buffer) color
-    // both are then added to get the final blended color or according the the mode in glBlendEquation(mode)
-    // default behaviour is glBlendFunc(GL_ONE, GL_ZERO); basically we throw away destination color and only consider source color
     CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-
-    // create a vertex array, associate it with a vertex buffer and it's layout, then create an index buffer
-    vertex_array va;
-    vertex_buffer vb(positions, 4 * 4 * sizeof(float));
-    vertex_buffer_layout layout;
-    layout.push<float>(2);
-    layout.push<float>(2);
-    va.add_buffer(vb, layout);
-    index_buffer ib(indices, 6);
-
-    // model view projection matrices
-    glm::mat4 proj = glm::ortho(0.0f, (float)window_width, 0.0f, (float)window_height, -1.0f, 1.0f); // size of our window
-    glm::mat4 view = glm::translate(glm::mat4(1.0), glm::vec3(0,0,0)); // translate everything 100px to the left to simulate camera moving 100px to the right
-    glm::vec3 translationa(centerx - 100, centery, 0.0f);
-    glm::vec3 translationb(centerx + 100, centery, 0.0f);
-
-    // tell the gpu how to use the data we gave it: shaders! we compile and shaders (vertex and fragment in this case) in to one program, which instructs the gpu
-    shader shader("shaders/basic.glsl");
-    shader.bind();  // bind the shader
-    
-    // texture
-    texture texture("textures/miku.jpg");
-    texture.bind();
-    shader.set_uniform_1i("u_texture", 0);  // tell the shader the slot of the texture to sample from
-
-    va.unbind();
-    vb.unbind();
-    ib.unbind();
-    shader.unbind();
-
     renderer renderer;
+    
+    void* current_test = nullptr;
+    bool test_window_cross = true;
 
-    // loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
-        // render here
+        CALL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
         renderer.clear();
-        
+
         // boilerplate code to tell opengl that a new frame is about to begin
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
-        if (!io.WantCaptureMouse)
+        
+        // tests menu
+        if (ImGui::BeginMainMenuBar())
         {
-            // input handling
+            if (ImGui::BeginMenu("Clear Color"))
+            {
+                test::destroy(current_test); // without this, there is a memory leak when x button isn't pressedd but menu buttons are pressed
+                current_test = new test::clear_color();
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("2D Texture"))
+            {
+                test::destroy(current_test); // without this, there is a memory leak when x button isn't pressedd but menu buttons are pressed
+                current_test = new test::texture_2d(window_width, window_height);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
         }
 
-        shader.bind();
-
-        { // draw object A, using translationa
-            // translate everything by the translation vector and then rotate everything by rotation_angle
-            // multiplication is in "m * v * p" order when the matrices are row-major, but here since they are colum-major, the order is reverse (opengl and glm work with column-major); when rewatching 3b1b's LA videos, think about mvp vs pvm order -- order of transformation
-            glm::mat4 model = glm::translate(glm::mat4(1.0), translationa); 
-            glm::mat4 mvp = proj * view * model; 
-            shader.set_uniform_mat4f("u_mvp", mvp);
-            renderer.draw(va, ib, shader);
+        // show the current test; this can be abstracted to use either a templated function with templated argument as the test's type,
+        // or by an array of function pointers where the index would be the current_test->name
+        if (current_test)
+        {
+            switch (((test::clear_color*)current_test)->name)
+            {
+                case test::CLEAR_COLOR:
+                {
+                    test::clear_color* clear_color = (test::clear_color*)current_test;
+                    clear_color->on_render();
+                    ImGui::Begin("Clear Color Test", &test_window_cross);
+                    clear_color->on_imgui_render();
+                    ImGui::End();
+                    if (!test_window_cross)
+                    {
+                        delete clear_color;
+                        current_test = nullptr;
+                        test_window_cross = true;
+                    }
+                    break;
+                }
+                case test::TEXTURE_2D:
+                {
+                    test::texture_2d* texture_2d = (test::texture_2d*)current_test;
+                    texture_2d->on_render();
+                    ImGui::Begin("2D Textures Test", &test_window_cross);
+                    texture_2d->on_imgui_render();
+                    ImGui::End();
+                    if (!test_window_cross)
+                    {
+                        delete texture_2d;
+                        current_test = nullptr;
+                        test_window_cross = true;
+                    }
+                    break;
+                }
+            }
         }
-
-        { // draw object B, using translationb
-            glm::mat4 model = glm::translate(glm::mat4(1.0), translationb);
-            glm::mat4 mvp = proj * view * model; 
-            shader.set_uniform_mat4f("u_mvp", mvp);
-            renderer.draw(va, ib, shader);
-        }
-
-        // imgui window
-        ImGui::SliderFloat3("Translate object A", &translationa.x, 0, window_width, "%.0f");
-        ImGui::SliderFloat3("Translate object B", &translationb.x, 0, window_width, "%.0f");
-        ImGui::NewLine();
-        ImGui::Text("%.0fFPS", ImGui::GetIO().Framerate);
-        ImGui::Text("Vendor: %s", glGetString(GL_VENDOR));
-        ImGui::Text("Renderer: %s", glGetString(GL_RENDERER));
-        ImGui::Text("OpenGL Version: %s", glGetString(GL_VERSION));
-        ImGui::Text("Shading Language: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
         // render the imgui elements
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        // swap front and back buffers 
         glfwSwapBuffers(window);
-
-        // poll for and process events
         glfwPollEvents();
     }
     } // end scope
