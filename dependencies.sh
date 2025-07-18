@@ -1,6 +1,8 @@
 # used to only compile imgui and stb_image as object files in the "dependencies/obj" directory
 # manadatory to be done at least once before building via build.sh or make
 
+echo "Compiling dependencies source code into dependencies/obj..."
+
 # 1. compile imgui files
 mkdir -p "dependencies/obj"
 IMGUI_LOCATION="dependencies/imgui"
@@ -10,7 +12,7 @@ INCLUDE_PATH="-Idependencies/imgui"
 for file in $IMGUI_LOCATION/*.cpp; do
     g++ "$file" -o "dependencies/obj/$(basename "$file" .cpp).o" $INCLUDE_PATH $FLAGS 
 done
-echo "ImGui should be compiled in \"dependencies/obj\""
+echo "Dear ImGui should be compiled in \"dependencies/obj\""
 
 # 2. compile stb_image files
 INCLUDE_PATH="-I./dependencies/stb_image"
