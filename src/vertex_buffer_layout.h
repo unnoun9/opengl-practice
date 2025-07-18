@@ -11,17 +11,7 @@ struct vertex_buffer_element
     unsigned int count;
     unsigned char normalized;
 
-    static unsigned int get_size_of_type(unsigned int type)
-    {
-        switch (type)
-        {
-        case GL_FLOAT: return 4;
-        case GL_UNSIGNED_INT: return 4;
-        case GL_UNSIGNED_BYTE: return 1;
-        }
-        ASSERT(false);
-        return 0;
-    }
+    static unsigned int get_size_of_type(unsigned int type);
 };
 
 struct vertex_buffer_layout
@@ -29,10 +19,7 @@ struct vertex_buffer_layout
     std::vector<vertex_buffer_element> elements; // each element contains info on one attribute of the buffer this layout targets
     unsigned int stride;
 
-    vertex_buffer_layout()
-        : stride(0)
-    {
-    }
+    vertex_buffer_layout();
 
     template <typename T>
     void push(unsigned int count)
@@ -43,21 +30,21 @@ struct vertex_buffer_layout
 };
 
 template<>
-void vertex_buffer_layout::push<float>(unsigned int count)
+inline void vertex_buffer_layout::push<float>(unsigned int count)
 {
     elements.push_back({ GL_FLOAT, count, GL_FALSE });
     stride += count * vertex_buffer_element::get_size_of_type(GL_FLOAT);
 }
 
 template<>
-void vertex_buffer_layout::push<unsigned int>(unsigned int count)
+inline void vertex_buffer_layout::push<unsigned int>(unsigned int count)
 {
     elements.push_back({ GL_UNSIGNED_INT, count, GL_FALSE });
     stride += count * vertex_buffer_element::get_size_of_type(GL_UNSIGNED_INT);
 }
 
 template<>
-void vertex_buffer_layout::push<unsigned char>(unsigned int count)
+inline void vertex_buffer_layout::push<unsigned char>(unsigned int count)
 {
     elements.push_back({ GL_UNSIGNED_BYTE, count, GL_TRUE});
     stride += count * vertex_buffer_element::get_size_of_type(GL_UNSIGNED_BYTE);

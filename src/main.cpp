@@ -61,7 +61,6 @@ int main(void)
 
     CALL(glEnable(GL_BLEND));
     CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-    renderer renderer;
     
     void* current_test = nullptr;
     bool test_window_cross = true;
@@ -69,7 +68,7 @@ int main(void)
     while (!glfwWindowShouldClose(window))
     {
         CALL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
-        renderer.clear();
+        clear();
 
         // boilerplate code to tell opengl that a new frame is about to begin
         ImGui_ImplOpenGL3_NewFrame();

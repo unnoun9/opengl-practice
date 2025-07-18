@@ -6,7 +6,7 @@ LIBS="-lglew32s -lglfw3 -lopengl32"
 DEFINES="-DGLEW_STATIC"
 FLAGS="-std=c++17 -g"
 
-SRC="src/*.cpp dependencies/obj/*.o"
+SRC="src/*.cpp src/tests/*.cpp dependencies/obj/*.o"
 OUTPUT="application"
 
 g++ $SRC -o $OUTPUT $INCLUDE_PATH $FLAGS $LIB_PATH $LIBS $DEFINES \
