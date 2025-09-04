@@ -1,0 +1,203 @@
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+int window_width, window_height;
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE); // other memory deallocations?
+}
+
+void window_resize_callback(GLFWwindow* window, int width, int height)
+{
+    window_width = width;
+    window_height = height;
+}
+
+unsigned int compile_shader(int unsigned type, const char* src)
+{
+    unsigned int id = glCreateShader(type);
+    glShaderSource(id, 1, &src, nullptr);
+    glCompileShader(id);
+    
+    int compile_status;
+    glGetShaderiv(id, GL_COMPILE_STATUS, &compile_status);
+    if (compile_status != GL_TRUE)
+    {
+        int info_log_length;
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &info_log_length);
+        char* buffer = (char*)alloca(info_log_length * sizeof(char));
+        glGetShaderInfoLog(id, info_log_length, &info_log_length, buffer);
+        std::cout << "Failed to compile " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader := ";
+        std::cout << buffer << std::endl;
+        glDeleteShader(id);
+        return 0;
+    }
+
+    return id;
+}
+
+void link_program(int unsigned program_id, int unsigned vertex_shader_id, int unsigned fragment_shader_id)
+{
+    glAttachShader(program_id, vertex_shader_id);
+    glAttachShader(program_id, fragment_shader_id);
+    glLinkProgram(program_id);
+
+    int link_status;
+    glGetProgramiv(program_id, GL_LINK_STATUS, &link_status);
+    if (link_status != GL_TRUE)
+    {
+        int info_log_length;
+        glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &info_log_length);
+        char* buffer = (char*)alloca(info_log_length);
+        glGetProgramInfoLog(program_id, info_log_length, &info_log_length, buffer);
+        std::cout << "Shader Linking Error := " << buffer << std::endl;
+    }
+}
+
+std::string read_code(const char* filename)
+{
+    std::ifstream file(filename);
+    if (!file.good())
+    {
+        std::cout << "Failed to load file " << filename << std::endl;
+        exit(1);
+    }
+
+    std::string line;
+    std::stringstream string_stream;
+    while (getline(file, line))
+    {
+        string_stream << line << '\n';
+    }
+
+    file.close();
+    return string_stream.str();
+}
+
+int main(void)
+{
+    GLFWwindow* window;
+
+    if (!glfwInit())
+        return -1;
+    
+    // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    float aspect_ratio = 4.0f / 3.0f;
+    window_width = 600;
+    window_height = int(window_width / aspect_ratio);
+    window_height = (window_height < 1) ? 1 : window_height;
+    window = glfwCreateWindow(window_width, window_height, "Jamie OpenGL", NULL, NULL);
+    if (!window)
+    {
+        glfwTerminate();
+        return -1;
+    }
+    
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetFramebufferSizeCallback(window, window_resize_callback);
+    glfwMakeContextCurrent(window);
+    
+    // enable v-sync
+    glfwSwapInterval(1);
+
+    if (glewInit() != GLEW_OK)
+        std::cout << "Error calling glewInit()" << std::endl;
+    
+    // imgui initialization boiler plate code
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
+    glEnable(GL_DEPTH_TEST);
+
+    float red_z =   0.5f;
+    float blue_z = -0.5f;
+    float verts[] = {
+         0.0f,  1.0f, -1.0f,    1.0f, 0.0f, 0.0f,
+        -1.0f, -1.0f, red_z,    0.2f, 0.0f, 0.0f,
+         1.0f, -1.0f, red_z,    0.2f, 0.0f, 0.0f,
+         
+         0.0f,  1.0f, blue_z,   0.0f, 0.0f, 0.2f,
+         0.0f, -1.0f, blue_z,   0.0f, 0.0f, 1.0f,
+         1.0f,  1.0f, blue_z,   0.0f, 0.0f, 0.2f,
+    };
+    int unsigned vertex_buffer_id;
+    glGenBuffers(1, &vertex_buffer_id);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
+    // note: `stride` is number of bytes from the beginning of an attribute of one vertex, to the beginning of the attribute of the next vertex
+    // but stride being zero is a bit different, it just means attributes are tightly packed or contiguous
+    // while `pointer` is the number of bytes from the beginning of a vertex to where the attribute's data starts
+    // enabling means sending the attrubute to the graphics processing pipeline
+    // also opengl assumes that the 0th attribute is the position by default
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (char*)(3 * sizeof(float)));
+
+    short unsigned indices[] = {
+        0, 1, 2,
+        3, 4, 5,
+    };
+    int unsigned index_buffer_id;
+    glGenBuffers(1, &index_buffer_id);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    std::string vertex_shader_src = read_code("shaders/vertex.glsl");
+    std::string fragment_shader_src = read_code("shaders/fragment.glsl");
+
+    int unsigned vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader_src.c_str());
+    int unsigned fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_src.c_str());
+    int unsigned program_id = glCreateProgram();
+    link_program(program_id, vertex_shader_id, fragment_shader_id);
+    glUseProgram(program_id);
+
+    while (!glfwWindowShouldClose(window))
+    {
+        
+        // boilerplate code to tell opengl that a new frame is about to begin
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        
+        // render
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glViewport(0, 0, window_width, window_height);
+        // glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+        // render the imgui elements
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // boilerplate code to delete all imgui stuff
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    glfwTerminate();
+    return 0;
+}

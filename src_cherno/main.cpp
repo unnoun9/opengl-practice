@@ -45,7 +45,7 @@ int main(void)
     window_width = 960;
     window_height = int(window_width / aspect_ratio);
     window_height = (window_height < 1) ? 1 : window_height;
-    window = glfwCreateWindow(window_width, window_height, "asfkljashdjklfashdf", NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, "Cherno OpenGL", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
