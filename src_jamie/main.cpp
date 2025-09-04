@@ -99,7 +99,7 @@ int main(void)
     window_width = 600;
     window_height = int(window_width / aspect_ratio);
     window_height = (window_height < 1) ? 1 : window_height;
-    window = glfwCreateWindow(window_width, window_height, "Jamie OpenGL", NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, "Graphics Pad", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -126,39 +126,26 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
-    float red_z =   0.5f;
-    float blue_z = -0.5f;
-    float verts[] = {
-         0.0f,  1.0f, -1.0f,    1.0f, 0.0f, 0.0f,
-        -1.0f, -1.0f, red_z,    0.2f, 0.0f, 0.0f,
-         1.0f, -1.0f, red_z,    0.2f, 0.0f, 0.0f,
-         
-         0.0f,  1.0f, blue_z,   0.0f, 0.0f, 0.2f,
-         0.0f, -1.0f, blue_z,   0.0f, 0.0f, 1.0f,
-         1.0f,  1.0f, blue_z,   0.0f, 0.0f, 0.2f,
-    };
+    float x_delta = 0.1f;
+    int num_tris = 0;
+    int num_verts_per_tri = 3;
+    int num_floats_per_vert = 6;
+    int tri_byte_size = num_verts_per_tri * num_floats_per_vert * sizeof(float);
+    int max_tris = 20;
+
     int unsigned vertex_buffer_id;
     glGenBuffers(1, &vertex_buffer_id);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, max_tris * tri_byte_size, 0, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (char*)(3 * sizeof(float)));
     // note: `stride` is number of bytes from the beginning of an attribute of one vertex, to the beginning of the attribute of the next vertex
     // but stride being zero is a bit different, it just means attributes are tightly packed or contiguous
     // while `pointer` is the number of bytes from the beginning of a vertex to where the attribute's data starts
     // enabling means sending the attrubute to the graphics processing pipeline
     // also opengl assumes that the 0th attribute is the position by default
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (char*)(3 * sizeof(float)));
-
-    short unsigned indices[] = {
-        0, 1, 2,
-        3, 4, 5,
-    };
-    int unsigned index_buffer_id;
-    glGenBuffers(1, &index_buffer_id);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     std::string vertex_shader_src = read_code("shaders/vertex.glsl");
     std::string fragment_shader_src = read_code("shaders/fragment.glsl");
@@ -178,12 +165,23 @@ int main(void)
         ImGui::NewFrame();
         
         // render
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClear(GL_DEPTH_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glViewport(0, 0, window_width, window_height);
-        // glDrawArrays(GL_TRIANGLES, 0, 3);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+        
+        // send another triangle to opengl
+        if (num_tris < max_tris)
+        {
+            float this_tri_x = -1.0 + num_tris * x_delta;
+            float this_tri[] = {
+                this_tri_x, 1.0, 0.0,               1.0, 0.0, 0.0,
+                this_tri_x + x_delta, 1.0, 0.0,     1.0, 0.0, 0.0,
+                this_tri_x, 0.0, 0.0,               1.0, 0.0, 0.0,
+            };
+            glBufferSubData(GL_ARRAY_BUFFER, num_tris * tri_byte_size, tri_byte_size, this_tri); // instead of tri_byte_suze, probably sizeof(this_tri) woul work
+            ++num_tris;
+        }
+
+        glDrawArrays(GL_TRIANGLES, (num_tris - 1) * num_verts_per_tri, num_verts_per_tri);
 
         // render the imgui elements
         ImGui::Render();
