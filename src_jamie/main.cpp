@@ -4,6 +4,7 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -11,19 +12,19 @@
 
 int window_width, window_height;
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE); // other memory deallocations?
 }
 
-void window_resize_callback(GLFWwindow* window, int width, int height)
+void window_resize_callback(GLFWwindow *window, int width, int height)
 {
     window_width = width;
     window_height = height;
 }
 
-unsigned int compile_shader(int unsigned type, const char* src)
+unsigned int compile_shader(int unsigned type, const char *src)
 {
     unsigned int id = glCreateShader(type);
     glShaderSource(id, 1, &src, nullptr);
@@ -35,7 +36,7 @@ unsigned int compile_shader(int unsigned type, const char* src)
     {
         int info_log_length;
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &info_log_length);
-        char* buffer = (char*)alloca(info_log_length * sizeof(char));
+        char *buffer = (char*)alloca(info_log_length * sizeof(char));
         glGetShaderInfoLog(id, info_log_length, &info_log_length, buffer);
         std::cout << "Failed to compile " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader := ";
         std::cout << buffer << std::endl;
@@ -58,13 +59,13 @@ void link_program(int unsigned program_id, int unsigned vertex_shader_id, int un
     {
         int info_log_length;
         glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &info_log_length);
-        char* buffer = (char*)alloca(info_log_length);
+        char *buffer = (char*)alloca(info_log_length);
         glGetProgramInfoLog(program_id, info_log_length, &info_log_length, buffer);
         std::cout << "Shader Linking Error := " << buffer << std::endl;
     }
 }
 
-std::string read_code(const char* filename)
+std::string read_code(const char *filename)
 {
     std::ifstream file(filename);
     if (!file.good())
@@ -84,9 +85,45 @@ std::string read_code(const char* filename)
     return string_stream.str();
 }
 
+struct vertex
+{
+    glm::vec3 position, color;
+};
+
+struct shape_data
+{
+    vertex *vertices;
+    int unsigned num_vertices;
+    short unsigned *indices;
+    int unsigned num_indices;
+};
+
+shape_data make_triangle()
+{
+    shape_data tri;
+
+    vertex vertices[] = {
+        glm::vec3(0.0, 1.0, 0.0), glm::vec3(1.0, 0.0, 0.0),
+        glm::vec3(-1.0, -1.0, 0.0), glm::vec3(0.0, 1.0, 0.0),
+        glm::vec3(1.0, -1.0, 0.0), glm::vec3(0.0, 0.0, 1.0),
+    };
+
+    short unsigned indices[] = { 0, 1, 2 };
+
+    tri.num_vertices = sizeof(vertices) / sizeof(*vertices);
+    tri.vertices = new vertex[tri.num_vertices];
+    memcpy(tri.vertices, vertices, sizeof(vertices));
+    
+    tri.num_indices = sizeof(indices) / sizeof(*indices);
+    tri.indices = new short unsigned[tri.num_indices];
+    memcpy(tri.indices, indices, sizeof(indices));
+
+    return tri;
+}
+
 int main(void)
 {
-    GLFWwindow* window;
+    GLFWwindow *window;
 
     if (!glfwInit())
         return -1;
@@ -126,17 +163,11 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
-    float x_delta = 0.1f;
-    int num_tris = 0;
-    int num_verts_per_tri = 3;
-    int num_floats_per_vert = 6;
-    int tri_byte_size = num_verts_per_tri * num_floats_per_vert * sizeof(float);
-    int max_tris = 20;
-
+    shape_data tri = make_triangle();
     int unsigned vertex_buffer_id;
     glGenBuffers(1, &vertex_buffer_id);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
-    glBufferData(GL_ARRAY_BUFFER, max_tris * tri_byte_size, 0, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, tri.num_vertices * sizeof(vertex), tri.vertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
@@ -146,6 +177,15 @@ int main(void)
     // while `pointer` is the number of bytes from the beginning of a vertex to where the attribute's data starts
     // enabling means sending the attrubute to the graphics processing pipeline
     // also opengl assumes that the 0th attribute is the position by default
+
+    int unsigned index_buffer_id;
+    glGenBuffers(1, &index_buffer_id);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, tri.num_indices * sizeof(short unsigned), tri.indices, GL_STATIC_DRAW);
+
+    delete[] tri.vertices;
+    delete[] tri.indices;
+    tri.num_vertices = tri.num_indices = 0;
 
     std::string vertex_shader_src = read_code("shaders/vertex.glsl");
     std::string fragment_shader_src = read_code("shaders/fragment.glsl");
@@ -158,6 +198,7 @@ int main(void)
 
     while (!glfwWindowShouldClose(window))
     {
+        using glm::vec3;
         
         // boilerplate code to tell opengl that a new frame is about to begin
         ImGui_ImplOpenGL3_NewFrame();
@@ -167,21 +208,23 @@ int main(void)
         // render
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glViewport(0, 0, window_width, window_height);
-        
-        // send another triangle to opengl
-        if (num_tris < max_tris)
-        {
-            float this_tri_x = -1.0 + num_tris * x_delta;
-            float this_tri[] = {
-                this_tri_x, 1.0, 0.0,               1.0, 0.0, 0.0,
-                this_tri_x + x_delta, 1.0, 0.0,     1.0, 0.0, 0.0,
-                this_tri_x, 0.0, 0.0,               1.0, 0.0, 0.0,
-            };
-            glBufferSubData(GL_ARRAY_BUFFER, num_tris * tri_byte_size, tri_byte_size, this_tri); // instead of tri_byte_suze, probably sizeof(this_tri) woul work
-            ++num_tris;
-        }
 
-        glDrawArrays(GL_TRIANGLES, (num_tris - 1) * num_verts_per_tri, num_verts_per_tri);
+        // this is basically: "inside of this program, there is a uniform called dominating color, and give me it's location"
+        // the location is like a handle but raelly is a register location
+        int dominating_color_uniform_location = glGetUniformLocation(program_id, "dominating_color");
+        int y_flip_uniform_location = glGetUniformLocation(program_id, "y_flip");
+
+        vec3 dominating_color_from_cpu(1.0, 0.0, 0.0);
+        glUniform3fv(dominating_color_uniform_location, 1, &dominating_color_from_cpu[0]);
+        glUniform1f(y_flip_uniform_location, 1.0f);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
+
+        dominating_color_from_cpu.r = 0.0;
+        dominating_color_from_cpu.b = 1.0;
+        glUniform3fv(dominating_color_uniform_location, 1, &dominating_color_from_cpu[0]);
+        glUniform1f(y_flip_uniform_location, -1.0f);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
+        // glDrawArrays(GL_TRIANGLES, 0, 3);
 
         // render the imgui elements
         ImGui::Render();
