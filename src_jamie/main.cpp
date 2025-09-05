@@ -262,18 +262,14 @@ int main(void)
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glViewport(0, 0, window_width, window_height);
 
-        mat4 model_transform = glm::rotate(
-            glm::rotate(
-                glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, -4.0f)),
-                glm::radians(25.0f), vec3(0.0f, 1.0f, 0.0f)
-            ),
-            glm::radians(25.0f), vec3(1.0f, 0.0f, 0.0f)
-        );
-        mat4 projection = glm::perspective(glm::radians(60.0f), ((float)window_width / window_height), 0.1f, 10.0f);
-        int model_transform_uniform_location = glGetUniformLocation(program_id, "model_transform");
-        int projection_uniform_location = glGetUniformLocation(program_id, "projection");
-        glUniformMatrix4fv(model_transform_uniform_location, 1, GL_FALSE, &model_transform[0][0]);
-        glUniformMatrix4fv(projection_uniform_location, 1, GL_FALSE, &projection[0][0]);
+        mat4 projection_mat = glm::perspective(glm::radians(60.0f), ((float)window_width / window_height), 0.1f, 10.0f);
+        mat4 proj_transform_mat = glm::translate(projection_mat, vec3(0.0f, 0.0f, -4.0f));
+        mat4 proj_transform_rot1_mat = glm::rotate(proj_transform_mat, glm::radians(25.0f), vec3(0.0f, 1.0f, 0.0f));
+        mat4 full_transform_mat = glm::rotate(proj_transform_rot1_mat, glm::radians(25.0f), vec3(1.0f, 0.0f, 0.0f));
+
+        int full_transform_mat_uniform_location = glGetUniformLocation(program_id, "full_transform_mat");
+        glUniformMatrix4fv(full_transform_mat_uniform_location, 1, GL_FALSE, &full_transform_mat[0][0]);
+
         glDrawElements(GL_TRIANGLES, cube.num_indices, GL_UNSIGNED_SHORT, 0);
 
         // render the imgui elements
