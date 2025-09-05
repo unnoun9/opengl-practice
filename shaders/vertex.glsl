@@ -1,16 +1,19 @@
 #version 430
 
-in layout(location=0) vec3 position;
-in layout(location=1) vec3 color;
+layout(location=0) in vec3 position;
+layout(location=1) in vec3 color;
 
-uniform vec3 dominating_color;
-uniform float y_flip;
+uniform mat4 model_transform;
+uniform mat4 projection;
 
 out vec3 the_color;
 
 void main()
 {
-   gl_Position = vec4(position, 1.0);
-   gl_Position.y = gl_Position.y * y_flip;
-   the_color = dominating_color;
+   vec4 pos = vec4(position, 1.0);
+   vec4 new_pos = model_transform * pos;
+   vec4 projected_pos = projection * new_pos;
+   gl_Position = projected_pos;
+   // gl_Position = projection * (model_transform * vec4(position_attrib, 1.0));
+   the_color = color;
 }

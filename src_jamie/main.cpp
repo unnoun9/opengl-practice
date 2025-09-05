@@ -5,10 +5,14 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
+
+using glm::vec3;
+using glm::mat4;
 
 int window_width, window_height;
 
@@ -103,9 +107,9 @@ shape_data make_triangle()
     shape_data tri;
 
     vertex vertices[] = {
-        glm::vec3(0.0, 1.0, 0.0), glm::vec3(1.0, 0.0, 0.0),
-        glm::vec3(-1.0, -1.0, 0.0), glm::vec3(0.0, 1.0, 0.0),
-        glm::vec3(1.0, -1.0, 0.0), glm::vec3(0.0, 0.0, 1.0),
+        vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0),
+        vec3(-1.0, -1.0, 0.0), vec3(0.0, 1.0, 0.0),
+        vec3(1.0, -1.0, 0.0), vec3(0.0, 0.0, 1.0),
     };
 
     short unsigned indices[] = { 0, 1, 2 };
@@ -119,6 +123,63 @@ shape_data make_triangle()
     memcpy(tri.indices, indices, sizeof(indices));
 
     return tri;
+}
+
+shape_data make_cube()
+{
+    shape_data cube;
+    
+    vertex verts[] = {
+        vec3(-1.0,  1.0,  1.0), vec3(1.0, 0.0, 0.0),
+        vec3( 1.0,  1.0,  1.0), vec3(0.0, 1.0, 0.0),
+        vec3( 1.0,  1.0, -1.0), vec3(0.0, 0.0, 1.0),
+        vec3(-1.0,  1.0, -1.0), vec3(1.0, 1.0, 1.0),
+
+        vec3(-1.0,  1.0, -1.0), vec3(1.0, 0.0, 1.0),
+        vec3( 1.0,  1.0, -1.0), vec3(0.0, 0.5, 0.2),
+        vec3( 1.0, -1.0, -1.0), vec3(0.8, 0.6, 0.4),
+        vec3(-1.0, -1.0, -1.0), vec3(0.3, 1.0, 0.5),
+
+        vec3( 1.0,  1.0, -1.0), vec3(0.2, 0.5, 0.2),
+        vec3( 1.0,  1.0,  1.0), vec3(0.9, 0.3, 0.7),
+        vec3( 1.0, -1.0,  1.0), vec3(0.3, 0.7, 0.5),
+        vec3( 1.0, -1.0, -1.0), vec3(0.5, 0.7, 0.5),
+
+        vec3(-1.0,  1.0,  1.0), vec3(0.7, 0.8, 0.2),
+        vec3(-1.0,  1.0, -1.0), vec3(0.5, 0.7, 0.3),
+        vec3(-1.0, -1.0, -1.0), vec3(0.4, 0.7, 0.7),
+        vec3(-1.0, -1.0,  1.0), vec3(0.2, 0.5, 1.0),
+
+        vec3( 1.0,  1.0,  1.0), vec3(0.6, 1.0, 0.7),
+        vec3(-1.0,  1.0,  1.0), vec3(0.6, 0.4, 0.8),
+        vec3(-1.0, -1.0,  1.0), vec3(0.2, 0.8, 0.7),
+        vec3( 1.0, -1.0,  1.0), vec3(0.2, 0.7, 1.0),
+
+        vec3( 1.0, -1.0, -1.0), vec3(0.8, 0.3, 0.7),
+        vec3(-1.0, -1.0, -1.0), vec3(0.8, 0.9, 0.5),
+        vec3(-1.0, -1.0,  1.0), vec3(0.5, 0.8, 0.5),
+        vec3( 1.0, -1.0,  1.0), vec3(0.9, 1.0, 0.2),
+    };
+
+    short unsigned inds[] = {
+         0,  1,  2,  0,  2,  3,     // top
+         4,  5,  6,  4,  6,  7,     // front
+         8,  9, 10,  8, 10, 11,     // right
+         12, 13, 14, 12, 14, 15,    // left
+         16, 17, 18, 16, 18, 19,    // back
+         20, 22, 21, 20, 23, 22,    // bottom
+
+    };
+
+    cube.num_vertices = sizeof(verts) / sizeof(*verts);
+    cube.vertices = new vertex[cube.num_vertices];
+    memcpy(cube.vertices, verts, sizeof(verts));
+    
+    cube.num_indices = sizeof(inds) / sizeof(*inds);
+    cube.indices = new short unsigned[cube.num_indices];
+    memcpy(cube.indices, inds, sizeof(inds));
+
+    return cube;
 }
 
 int main(void)
@@ -163,29 +224,23 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
-    shape_data tri = make_triangle();
+    shape_data cube = make_cube();
     int unsigned vertex_buffer_id;
     glGenBuffers(1, &vertex_buffer_id);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
-    glBufferData(GL_ARRAY_BUFFER, tri.num_vertices * sizeof(vertex), tri.vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, cube.num_vertices * sizeof(vertex), cube.vertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (char*)(3 * sizeof(float)));
-    // note: `stride` is number of bytes from the beginning of an attribute of one vertex, to the beginning of the attribute of the next vertex
-    // but stride being zero is a bit different, it just means attributes are tightly packed or contiguous
-    // while `pointer` is the number of bytes from the beginning of a vertex to where the attribute's data starts
-    // enabling means sending the attrubute to the graphics processing pipeline
-    // also opengl assumes that the 0th attribute is the position by default
 
     int unsigned index_buffer_id;
     glGenBuffers(1, &index_buffer_id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, tri.num_indices * sizeof(short unsigned), tri.indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, cube.num_indices * sizeof(short unsigned), cube.indices, GL_STATIC_DRAW);
 
-    delete[] tri.vertices;
-    delete[] tri.indices;
-    tri.num_vertices = tri.num_indices = 0;
+    delete[] cube.vertices;
+    delete[] cube.indices;
 
     std::string vertex_shader_src = read_code("shaders/vertex.glsl");
     std::string fragment_shader_src = read_code("shaders/fragment.glsl");
@@ -198,8 +253,6 @@ int main(void)
 
     while (!glfwWindowShouldClose(window))
     {
-        using glm::vec3;
-        
         // boilerplate code to tell opengl that a new frame is about to begin
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -209,22 +262,19 @@ int main(void)
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glViewport(0, 0, window_width, window_height);
 
-        // this is basically: "inside of this program, there is a uniform called dominating color, and give me it's location"
-        // the location is like a handle but raelly is a register location
-        int dominating_color_uniform_location = glGetUniformLocation(program_id, "dominating_color");
-        int y_flip_uniform_location = glGetUniformLocation(program_id, "y_flip");
-
-        vec3 dominating_color_from_cpu(1.0, 0.0, 0.0);
-        glUniform3fv(dominating_color_uniform_location, 1, &dominating_color_from_cpu[0]);
-        glUniform1f(y_flip_uniform_location, 1.0f);
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
-
-        dominating_color_from_cpu.r = 0.0;
-        dominating_color_from_cpu.b = 1.0;
-        glUniform3fv(dominating_color_uniform_location, 1, &dominating_color_from_cpu[0]);
-        glUniform1f(y_flip_uniform_location, -1.0f);
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
-        // glDrawArrays(GL_TRIANGLES, 0, 3);
+        mat4 model_transform = glm::rotate(
+            glm::rotate(
+                glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, -4.0f)),
+                glm::radians(25.0f), vec3(0.0f, 1.0f, 0.0f)
+            ),
+            glm::radians(25.0f), vec3(1.0f, 0.0f, 0.0f)
+        );
+        mat4 projection = glm::perspective(glm::radians(60.0f), ((float)window_width / window_height), 0.1f, 10.0f);
+        int model_transform_uniform_location = glGetUniformLocation(program_id, "model_transform");
+        int projection_uniform_location = glGetUniformLocation(program_id, "projection");
+        glUniformMatrix4fv(model_transform_uniform_location, 1, GL_FALSE, &model_transform[0][0]);
+        glUniformMatrix4fv(projection_uniform_location, 1, GL_FALSE, &projection[0][0]);
+        glDrawElements(GL_TRIANGLES, cube.num_indices, GL_UNSIGNED_SHORT, 0);
 
         // render the imgui elements
         ImGui::Render();
