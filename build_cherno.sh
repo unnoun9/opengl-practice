@@ -1,3 +1,5 @@
+# for compiling src_cherno code
+# works only for windows by default
 # builds the program and runs it; assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
 
 INCLUDE_PATH="-I./dependencies/glew/include -I./dependencies/stb_image -I./dependencies/imgui -I./src_cherno"

@@ -5,3 +5,4 @@ obj
 *.exe
 *.out
 *.app
+imgui.ini

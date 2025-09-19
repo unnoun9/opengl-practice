@@ -1,3 +1,5 @@
+# for compiling src_cherno code
+# works only for windows
 # compiler and flags
 COMPILER = g++
 FLAGS = -std=c++17 -g

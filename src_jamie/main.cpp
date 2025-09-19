@@ -251,6 +251,8 @@ int main(void)
     link_program(program_id, vertex_shader_id, fragment_shader_id);
     glUseProgram(program_id);
 
+    float angle_y = 25.0f, angle_x = 25.0f;
+
     while (!glfwWindowShouldClose(window))
     {
         // boilerplate code to tell opengl that a new frame is about to begin
@@ -264,13 +266,18 @@ int main(void)
 
         mat4 projection_mat = glm::perspective(glm::radians(60.0f), ((float)window_width / window_height), 0.1f, 10.0f);
         mat4 proj_transform_mat = glm::translate(projection_mat, vec3(0.0f, 0.0f, -4.0f));
-        mat4 proj_transform_rot1_mat = glm::rotate(proj_transform_mat, glm::radians(25.0f), vec3(0.0f, 1.0f, 0.0f));
-        mat4 full_transform_mat = glm::rotate(proj_transform_rot1_mat, glm::radians(25.0f), vec3(1.0f, 0.0f, 0.0f));
+        mat4 proj_transform_rot1_mat = glm::rotate(proj_transform_mat, glm::radians(angle_y), vec3(0.0f, 1.0f, 0.0f));
+        mat4 full_transform_mat = glm::rotate(proj_transform_rot1_mat, glm::radians(angle_x), vec3(1.0f, 0.0f, 0.0f));
 
         int full_transform_mat_uniform_location = glGetUniformLocation(program_id, "full_transform_mat");
         glUniformMatrix4fv(full_transform_mat_uniform_location, 1, GL_FALSE, &full_transform_mat[0][0]);
 
         glDrawElements(GL_TRIANGLES, cube.num_indices, GL_UNSIGNED_SHORT, 0);
+
+        ImGui::Begin("Rotate");
+        ImGui::SliderFloat("Rotation X", &angle_x, 0, 360, "%.0f");
+        ImGui::SliderFloat("Rotation Y", &angle_y, 0, 360, "%.0f");
+        ImGui::End();
 
         // render the imgui elements
         ImGui::Render();
