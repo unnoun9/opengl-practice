@@ -7,7 +7,7 @@ echo "Compiling dependencies source code into dependencies/obj..."
 mkdir -p "dependencies/obj"
 IMGUI_LOCATION="dependencies/imgui"
 FLAGS="-std=c++17 -O3 -c"
-INCLUDE_PATH="-Idependencies/imgui"
+INCLUDE_PATH="-Idependencies/imgui -Idependencies/"
 
 for file in $IMGUI_LOCATION/*.cpp; do
     g++ "$file" -o "dependencies/obj/$(basename "$file" .cpp).o" $INCLUDE_PATH $FLAGS 

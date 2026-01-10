@@ -2,9 +2,9 @@
 # works only for windows by default
 # builds the program and runs it; assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
 
-INCLUDE_PATH="-I./dependencies/glew/include -I./dependencies/stb_image -I./dependencies/imgui -I./src_cherno"
-LIB_PATH="-L./dependencies/glew/lib/x64"
-LIBS="-lglew32s -lglfw3 -lopengl32"
+INCLUDE_PATH="-I./dependencies/ -I./dependencies/glew/include -I./dependencies/stb_image -I./dependencies/imgui -I./src_cherno"
+LIB_PATH="-L./dependencies/glew/lib/x64 -L./dependencies/GLFW"
+LIBS="-lglew32s -lglfw3 -lopengl32 -lgdi32"
 DEFINES="-DGLEW_STATIC"
 FLAGS="-std=c++17 -g"
 

@@ -10,15 +10,15 @@ FLAGS="-std=c++17 -g"
 SRC="src_jamie/*.cpp dependencies/obj/*.o"
 OUTPUT="application"
 
-INCLUDE_PATH="-I./dependencies/glew/include -I./dependencies -I./dependencies/stb_image -I./dependencies/imgui -I./src_jamie"
-LIB_PATH="-L./dependencies/glew/lib/x64"
+INCLUDE_PATH="-I./dependencies/ -I./dependencies/glew/include -I./dependencies/stb_image -I./dependencies/imgui -I./src_jamie"
+LIB_PATH="-L./dependencies/glew/lib/x64 -L./dependencies/GLFW"
 
 OS="$(uname -s)"
 
 if [ "$OS" = "Linux" ]; then
     LIBS="-lGLEW -lglfw -lGL"
 else
-    LIBS="-lglew32s -lglfw3 -lopengl32"
+    LIBS="-lglew32s -lglfw3 -lopengl32 -lgdi32"
 fi
 
 g++ $SRC -o $OUTPUT $INCLUDE_PATH $FLAGS $LIB_PATH $LIBS $DEFINES \
