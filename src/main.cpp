@@ -1,15 +1,14 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 using glm::vec3;
 using glm::mat4;
@@ -31,7 +30,7 @@ void window_resize_callback(GLFWwindow *window, int width, int height)
 unsigned int compile_shader(int unsigned type, const char *src)
 {
     unsigned int id = glCreateShader(type);
-    glShaderSource(id, 1, &src, nullptr);
+    glShaderSource(id, 1, &src, NULL);
     glCompileShader(id);
     
     int compile_status;
@@ -42,8 +41,8 @@ unsigned int compile_shader(int unsigned type, const char *src)
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &info_log_length);
         char *buffer = (char*)alloca(info_log_length * sizeof(char));
         glGetShaderInfoLog(id, info_log_length, &info_log_length, buffer);
-        std::cout << "Failed to compile " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader := ";
-        std::cout << buffer << std::endl;
+        printf("Failed to compile %s shader := %s\n", 
+               (type == GL_VERTEX_SHADER ? "vertex" : "fragment"), buffer);
         glDeleteShader(id);
         return 0;
     }
@@ -65,33 +64,44 @@ void link_program(int unsigned program_id, int unsigned vertex_shader_id, int un
         glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &info_log_length);
         char *buffer = (char*)alloca(info_log_length);
         glGetProgramInfoLog(program_id, info_log_length, &info_log_length, buffer);
-        std::cout << "Shader Linking Error := " << buffer << std::endl;
+        printf("Shader Linking Error := %s\n", buffer);
     }
+
+    glDeleteShader(vertex_shader_id);
+    glDeleteShader(fragment_shader_id);
 }
 
-std::string read_code(const char *filename)
+char* read_code(const char *filename)
 {
-    std::ifstream file(filename);
-    if (!file.good())
+    FILE *file = fopen(filename, "r");
+    if (!file)
     {
-        std::cout << "Failed to load file " << filename << std::endl;
+        printf("Failed to load file %s\n", filename);
         exit(1);
     }
 
-    std::string line;
-    std::stringstream string_stream;
-    while (getline(file, line))
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char *buffer = (char*)malloc(file_size + 1);
+    if (!buffer)
     {
-        string_stream << line << '\n';
+        printf("Failed to allocate memory for file %s\n", filename);
+        fclose(file);
+        exit(1);
     }
 
-    file.close();
-    return string_stream.str();
+    size_t bytes_read = fread(buffer, 1, file_size, file);
+    buffer[bytes_read] = '\0';
+
+    fclose(file);
+    return buffer;
 }
 
 struct vertex
 {
-    glm::vec3 position, color;
+    vec3 position, color;
 };
 
 struct shape_data
@@ -115,11 +125,11 @@ shape_data make_triangle()
     short unsigned indices[] = { 0, 1, 2 };
 
     tri.num_vertices = sizeof(vertices) / sizeof(*vertices);
-    tri.vertices = new vertex[tri.num_vertices];
+    tri.vertices = (vertex*)malloc(tri.num_vertices * sizeof(vertex));
     memcpy(tri.vertices, vertices, sizeof(vertices));
     
     tri.num_indices = sizeof(indices) / sizeof(*indices);
-    tri.indices = new short unsigned[tri.num_indices];
+    tri.indices = (short unsigned*)malloc(tri.num_indices * sizeof(short unsigned));
     memcpy(tri.indices, indices, sizeof(indices));
 
     return tri;
@@ -168,15 +178,14 @@ shape_data make_cube()
          12, 13, 14, 12, 14, 15,    // left
          16, 17, 18, 16, 18, 19,    // back
          20, 22, 21, 20, 23, 22,    // bottom
-
     };
 
     cube.num_vertices = sizeof(verts) / sizeof(*verts);
-    cube.vertices = new vertex[cube.num_vertices];
+    cube.vertices = (vertex*)malloc(cube.num_vertices * sizeof(vertex));
     memcpy(cube.vertices, verts, sizeof(verts));
     
     cube.num_indices = sizeof(inds) / sizeof(*inds);
-    cube.indices = new short unsigned[cube.num_indices];
+    cube.indices = (short unsigned*)malloc(cube.num_indices * sizeof(short unsigned));
     memcpy(cube.indices, inds, sizeof(inds));
 
     return cube;
@@ -193,8 +202,8 @@ int main(void)
     // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    float aspect_ratio = 4.0f / 3.0f;
-    window_width = 800;
+    float aspect_ratio = 16.0f / 9.0f;
+    window_width = 1000;
     window_height = int(window_width / aspect_ratio);
     window_height = (window_height < 1) ? 1 : window_height;
     window = glfwCreateWindow(window_width, window_height, "Graphics Pad", NULL, NULL);
@@ -213,7 +222,7 @@ int main(void)
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "Error calling glewInit()" << std::endl;
+        printf("Error loading glad\n");
         return -1;
     }
     
@@ -227,11 +236,11 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
-    shape_data cube = make_cube();
+    shape_data shape = make_cube();
     int unsigned vertex_buffer_id;
     glGenBuffers(1, &vertex_buffer_id);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
-    glBufferData(GL_ARRAY_BUFFER, cube.num_vertices * sizeof(vertex), cube.vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, shape.num_vertices * sizeof(vertex), shape.vertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
@@ -240,21 +249,26 @@ int main(void)
     int unsigned index_buffer_id;
     glGenBuffers(1, &index_buffer_id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, cube.num_indices * sizeof(short unsigned), cube.indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, shape.num_indices * sizeof(short unsigned), shape.indices, GL_STATIC_DRAW);
 
-    delete[] cube.vertices;
-    delete[] cube.indices;
+    free(shape.vertices);
+    free(shape.indices);
 
-    std::string vertex_shader_src = read_code("shaders/vertex.glsl");
-    std::string fragment_shader_src = read_code("shaders/fragment.glsl");
+    char *vertex_shader_src = read_code("shaders/vertex.glsl");
+    char *fragment_shader_src = read_code("shaders/fragment.glsl");
 
-    int unsigned vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader_src.c_str());
-    int unsigned fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_src.c_str());
+    int unsigned vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader_src);
+    int unsigned fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_src);
     int unsigned program_id = glCreateProgram();
     link_program(program_id, vertex_shader_id, fragment_shader_id);
     glUseProgram(program_id);
 
-    float angle_y = 25.0f, angle_x = 25.0f;
+    free(vertex_shader_src);
+    free(fragment_shader_src);
+
+    float angle_x = 36.0f;
+    float angle_y = 0.0f;
+    float angle_z = 0.0f;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -267,19 +281,35 @@ int main(void)
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glViewport(0, 0, window_width, window_height);
 
-        mat4 projection_mat = glm::perspective(glm::radians(60.0f), ((float)window_width / window_height), 0.1f, 10.0f);
-        mat4 proj_transform_mat = glm::translate(projection_mat, vec3(0.0f, 0.0f, -4.0f));
-        mat4 proj_transform_rot1_mat = glm::rotate(proj_transform_mat, glm::radians(angle_y), vec3(0.0f, 1.0f, 0.0f));
-        mat4 full_transform_mat = glm::rotate(proj_transform_rot1_mat, glm::radians(angle_x), vec3(1.0f, 0.0f, 0.0f));
-
         int full_transform_mat_uniform_location = glGetUniformLocation(program_id, "full_transform_mat");
-        glUniformMatrix4fv(full_transform_mat_uniform_location, 1, GL_FALSE, &full_transform_mat[0][0]);
 
-        glDrawElements(GL_TRIANGLES, cube.num_indices, GL_UNSIGNED_SHORT, 0);
+        mat4 projection_mat = glm::perspective(glm::radians(80.0f), ((float)window_width / window_height), 0.1f, 10.0f);
+        mat4 proj_transform_mat = glm::translate(projection_mat, vec3(-1.0f, 0.0f, -3.0f));
+        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(angle_x), vec3(1.0f, 0.0f, 0.0f));
+        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(angle_y), vec3(0.0f, 1.0f, 0.0f));
+        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(angle_z), vec3(0.0f, 0.0f, 1.0f));
+
+        glUniformMatrix4fv(full_transform_mat_uniform_location, 1, GL_FALSE, &proj_transform_mat[0][0]);
+        glDrawElements(GL_TRIANGLES, shape.num_indices, GL_UNSIGNED_SHORT, 0);
+
+
+        proj_transform_mat = glm::translate(projection_mat, vec3(1.0f, 0.0f, -3.75f));
+        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(126.0f), vec3(0.0f, 1.0f, 0.0f));
+        glUniformMatrix4fv(full_transform_mat_uniform_location, 1, GL_FALSE, &proj_transform_mat[0][0]);
+        glDrawElements(GL_TRIANGLES, shape.num_indices, GL_UNSIGNED_SHORT, 0);
+
+
 
         ImGui::Begin("Rotate");
         ImGui::SliderFloat("Rotation X", &angle_x, 0, 360, "%.0f");
         ImGui::SliderFloat("Rotation Y", &angle_y, 0, 360, "%.0f");
+        ImGui::SliderFloat("Rotation Z", &angle_z, 0, 360, "%.0f");
+        ImGui::NewLine();
+        ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
+        ImGui::Text("Vendor: %s", glGetString(GL_VENDOR));
+        ImGui::Text("Renderer: %s", glGetString(GL_RENDERER));
+        ImGui::Text("OpenGL Version: %s", glGetString(GL_VERSION));
+        ImGui::Text("Shading Language: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
         ImGui::End();
 
         // render the imgui elements
@@ -294,7 +324,8 @@ int main(void)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-
+    glUseProgram(0);
+    glDeleteProgram(program_id);
     glfwTerminate();
     return 0;
 }
