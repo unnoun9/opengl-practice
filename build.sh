@@ -27,3 +27,4 @@ else
 fi
 
 $cc $src -o build/$output $includes $flags $lib_path $libs
+echo "Built"

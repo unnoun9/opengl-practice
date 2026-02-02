@@ -10,8 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-using glm::vec3;
-using glm::mat4;
+using namespace glm;
 
 int window_width, window_height;
 
@@ -27,7 +26,7 @@ void window_resize_callback(GLFWwindow *window, int width, int height)
     window_height = height;
 }
 
-unsigned int compile_shader(int unsigned type, const char *src)
+unsigned int compile_shader(unsigned int type, const char *src)
 {
     unsigned int id = glCreateShader(type);
     glShaderSource(id, 1, &src, NULL);
@@ -50,11 +49,13 @@ unsigned int compile_shader(int unsigned type, const char *src)
     return id;
 }
 
-void link_program(int unsigned program_id, int unsigned vertex_shader_id, int unsigned fragment_shader_id)
+void link_program(unsigned int program_id, unsigned int vertex_shader_id, unsigned int fragment_shader_id)
 {
     glAttachShader(program_id, vertex_shader_id);
     glAttachShader(program_id, fragment_shader_id);
+    // can do glBindAttribLocation here, must be before linking coz linker resolves attrib locations
     glLinkProgram(program_id);
+    // after linking can query location of an attrib via glGetAttribLocation
 
     int link_status;
     glGetProgramiv(program_id, GL_LINK_STATUS, &link_status);
@@ -107,9 +108,9 @@ struct vertex
 struct shape_data
 {
     vertex *vertices;
-    int unsigned num_vertices;
+    unsigned int num_vertices;
     short unsigned *indices;
-    int unsigned num_indices;
+    unsigned int num_indices;
 };
 
 shape_data make_triangle()
@@ -237,16 +238,18 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
 
     shape_data shape = make_cube();
-    int unsigned vertex_buffer_id;
+    unsigned int vertex_buffer_id;
     glGenBuffers(1, &vertex_buffer_id);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
     glBufferData(GL_ARRAY_BUFFER, shape.num_vertices * sizeof(vertex), shape.vertices, GL_STATIC_DRAW);
+    // glVertexAttrib can be used if we don't wanna call glEnableVertexAttribArray with glVertex Attrib, the attrib
+    // will have the same value given as the arguments, and not vary per vertex as per the vertex buffer
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (char*)(3 * sizeof(float)));
 
-    int unsigned index_buffer_id;
+    unsigned int index_buffer_id;
     glGenBuffers(1, &index_buffer_id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, shape.num_indices * sizeof(short unsigned), shape.indices, GL_STATIC_DRAW);
@@ -257,9 +260,9 @@ int main(void)
     char *vertex_shader_src = read_code("shaders/vertex.glsl");
     char *fragment_shader_src = read_code("shaders/fragment.glsl");
 
-    int unsigned vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader_src);
-    int unsigned fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_src);
-    int unsigned program_id = glCreateProgram();
+    unsigned int vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader_src);
+    unsigned int fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_src);
+    unsigned int program_id = glCreateProgram();
     link_program(program_id, vertex_shader_id, fragment_shader_id);
     glUseProgram(program_id);
 
@@ -269,6 +272,40 @@ int main(void)
     float angle_x = 36.0f;
     float angle_y = 0.0f;
     float angle_z = 0.0f;
+
+    mat4 full_transforms[2];
+    mat4 projection_mat = perspective(radians(80.0f), ((float)window_width / window_height), 0.1f, 10.0f);
+    full_transforms[0] = translate(projection_mat, vec3(-1.0f, 0.0f, -3.0f));
+    full_transforms[0] = rotate(full_transforms[0], radians(angle_x), vec3(1.0f, 0.0f, 0.0f));
+    full_transforms[0] = rotate(full_transforms[0], radians(angle_y), vec3(0.0f, 1.0f, 0.0f));
+    full_transforms[0] = rotate(full_transforms[0], radians(angle_z), vec3(0.0f, 0.0f, 1.0f));
+
+    full_transforms[1] = translate(projection_mat, vec3(1.0f, 0.0f, -3.75f));
+    full_transforms[1] = rotate(full_transforms[1], radians(126.0f), vec3(0.0f, 1.0f, 0.0f));
+    full_transforms[1] = full_transforms[1];
+
+    unsigned int transformation_mat_buffer_id;
+    glGenBuffers(1, &transformation_mat_buffer_id);
+    glBindBuffer(GL_ARRAY_BUFFER, transformation_mat_buffer_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(full_transforms), full_transforms, GL_STATIC_DRAW);
+    // size is 4 because atmost 4 floats can be sent as attrib at once, so we send all 4 rows, one-by-one as attribs
+    // and then in the shader it's implied because we use mat4 type there so we don't have to do layout(location > 2) there
+    // and thus, using mat4 in the shader at location=2 consumes location=3,4,5 as well because each attrib can be at max 4 floats
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *)(sizeof(float) * 0));
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *)(sizeof(float) * 4));
+    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *)(sizeof(float) * 8));
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *)(sizeof(float) * 12));
+    glEnableVertexAttribArray(2);
+    glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(4);
+    glEnableVertexAttribArray(5);
+    // divides indices of the instance data by the second argument, so say if it was 2, then each two instace would have same instance data
+    // another way to think is if second argument is 0, the attrib advances per-vertex, if it is 1, it advances per-instance
+    // if it is N, it advances N instances
+    glVertexAttribDivisor(2, 1);
+    glVertexAttribDivisor(3, 1);
+    glVertexAttribDivisor(4, 1);
+    glVertexAttribDivisor(5, 1);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -280,25 +317,7 @@ int main(void)
         // render
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glViewport(0, 0, window_width, window_height);
-
-        int full_transform_mat_uniform_location = glGetUniformLocation(program_id, "full_transform_mat");
-
-        mat4 projection_mat = glm::perspective(glm::radians(80.0f), ((float)window_width / window_height), 0.1f, 10.0f);
-        mat4 proj_transform_mat = glm::translate(projection_mat, vec3(-1.0f, 0.0f, -3.0f));
-        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(angle_x), vec3(1.0f, 0.0f, 0.0f));
-        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(angle_y), vec3(0.0f, 1.0f, 0.0f));
-        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(angle_z), vec3(0.0f, 0.0f, 1.0f));
-
-        glUniformMatrix4fv(full_transform_mat_uniform_location, 1, GL_FALSE, &proj_transform_mat[0][0]);
-        glDrawElements(GL_TRIANGLES, shape.num_indices, GL_UNSIGNED_SHORT, 0);
-
-
-        proj_transform_mat = glm::translate(projection_mat, vec3(1.0f, 0.0f, -3.75f));
-        proj_transform_mat = glm::rotate(proj_transform_mat, glm::radians(126.0f), vec3(0.0f, 1.0f, 0.0f));
-        glUniformMatrix4fv(full_transform_mat_uniform_location, 1, GL_FALSE, &proj_transform_mat[0][0]);
-        glDrawElements(GL_TRIANGLES, shape.num_indices, GL_UNSIGNED_SHORT, 0);
-
-
+        glDrawElementsInstanced(GL_TRIANGLES, shape.num_indices, GL_UNSIGNED_SHORT, 0, 2);
 
         ImGui::Begin("Rotate");
         ImGui::SliderFloat("Rotation X", &angle_x, 0, 360, "%.0f");
