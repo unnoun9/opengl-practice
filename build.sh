@@ -1,25 +1,29 @@
-# for compiling src_jamie code
-# builds the program and runs it; assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
-# on linux, install glfw and glew using package manager globally, then run this script
-# on windows, install glfw globally somehow, but other libraries are present in `dependencies/`
-# script only deals with windows and linux, not mac
-# global installations of libraries is required as well as running of `dependencies.sh` before running this script!
+# for compiling src code, deals with windows and linux only
+# builds the program and runs it
+# assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
+# run dependencies.sh before this
+# on linux, install glfw using the package manager
 
-DEFINES="-DGLEW_STATIC"
-FLAGS="-std=c++17 -g"
-SRC="src_jamie/*.cpp dependencies/obj/*.o"
-OUTPUT="application"
+cc="g++"
+flags="-std=c++11 -g"
+src="src/main.cpp dependencies/obj/*.o"
+output="application"
+includes="-Idependencies -Idependencies/stb_image -Idependencies/imgui -Isrc"
 
-INCLUDE_PATH="-I./dependencies/ -I./dependencies/glew/include -I./dependencies/stb_image -I./dependencies/imgui -I./src_jamie"
-LIB_PATH="-L./dependencies/glew/lib/x64 -L./dependencies/GLFW"
+mkdir -p build
 
-OS="$(uname -s)"
-
-if [ "$OS" = "Linux" ]; then
-    LIBS="-lGLEW -lglfw -lGL"
+if [[ "$(uname)" == "Linux" ]]; then
+    echo "Building for Linux..."
+    libs="-lglfw -lGL -lX11"
+    
+elif [[ "$(uname)" == "MINGW"* ]] || [[ "$(uname)" == "MSYS"* ]]; then
+    echo "Building for Windows..."
+    lib_path="-Ldependencies/GLFW"
+    libs="-lglfw3 -lopengl32 -lgdi32"
+    
 else
-    LIBS="-lglew32s -lglfw3 -lopengl32 -lgdi32"
+    echo "Unsupported platform: $(uname)"
+    exit 1
 fi
 
-g++ $SRC -o $OUTPUT $INCLUDE_PATH $FLAGS $LIB_PATH $LIBS $DEFINES \
-    && ./$OUTPUT
+$cc $src -o build/$output $includes $flags $lib_path $libs

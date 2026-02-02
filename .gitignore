@@ -1,8 +1,12 @@
 .vscode
 obj
+build
 *.o
 *.obj
 *.exe
 *.out
 *.app
 imgui.ini
+compile_commands.json
+.clangd
+.cache

@@ -1,15 +1,28 @@
 # for compiling src_cherno code
 # works only for windows by default
-# builds the program and runs it; assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
+# assumes that dependencies are present in dependencies folder with their header files, library files, or compiled object files
 
-INCLUDE_PATH="-I./dependencies/ -I./dependencies/glew/include -I./dependencies/stb_image -I./dependencies/imgui -I./src_cherno"
-LIB_PATH="-L./dependencies/glew/lib/x64 -L./dependencies/GLFW"
-LIBS="-lglew32s -lglfw3 -lopengl32 -lgdi32"
-DEFINES="-DGLEW_STATIC"
-FLAGS="-std=c++17 -g"
+cc="g++"
+flags="-std=c++11 -g"
+src="src_cherno/*.cpp src_cherno/tests/*.cpp dependencies/obj/*.o"
+output="application_cherno"
 
-SRC="src_cherno/*.cpp src_cherno/tests/*.cpp dependencies/obj/*.o"
-OUTPUT="application"
+includes="-Idependencies -Idependencies/stb_image -Idependencies/imgui -Isrc_cherno"
 
-g++ $SRC -o $OUTPUT $INCLUDE_PATH $FLAGS $LIB_PATH $LIBS $DEFINES \
-    && ./$OUTPUT
+mkdir -p build
+
+if [[ "$(uname)" == "Linux" ]]; then
+    echo "Building for Linux..."
+    libs="-lglfw -lGL -lX11"
+    
+elif [[ "$(uname)" == "MINGW"* ]] || [[ "$(uname)" == "MSYS"* ]]; then
+    echo "Building for Windows..."
+    lib_path="-Ldependencies/GLFW"
+    libs="-lglfw3 -lopengl32 -lgdi32"
+    
+else
+    echo "Unsupported platform: $(uname)"
+    exit 1
+fi
+
+$cc $src -o build/$output $includes $flags $lib_path $libs

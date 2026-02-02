@@ -12,7 +12,7 @@
 
 namespace tests {
 
-enum name
+enum name_t
 {
     CLEAR_COLOR, TWO_2D_TEXTURES, IDK,
     NUM_TEST_NAMES
@@ -20,13 +20,13 @@ enum name
 
 struct clear_color
 {
-    name name;
+    name_t name;
     float color[4];
 };
 
 struct two_2d_textures
 {
-    name name;
+    name_t name;
     int window_width, window_height;
     glm::mat4 proj, view, model;                // model view projection matrices
     glm::vec3 translationa, translationb;       // translation vectors to translate objects A and B
@@ -40,10 +40,10 @@ struct two_2d_textures
 
 struct idk
 {
-    name name;
+    name_t name;
 };
 
-void* init(name test_name);
+void* init(name_t test_name);
 void render(void* test, void** test_loc, bool* window_cross);
 void destroy(void* test);
 

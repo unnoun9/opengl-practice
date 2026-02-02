@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 #include "vertex_array.h"
 #include "index_buffer.h"

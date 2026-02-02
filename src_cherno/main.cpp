@@ -2,7 +2,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include <iostream>
@@ -59,8 +59,11 @@ int main(void)
     // enable v-sync
     glfwSwapInterval(1);
 
-    if (glewInit() != GLEW_OK)
-        std::cout << "Error calling glewInit()" << std::endl;
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cout << "Error initializing GLAD" << std::endl;
+        return -1;
+    }
     
     // imgui initialization boiler plate code
     IMGUI_CHECKVERSION();

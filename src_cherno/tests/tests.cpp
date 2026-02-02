@@ -1,4 +1,4 @@
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <imgui.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -14,7 +14,7 @@
 
 extern int window_width, window_height;
 
-void* tests::init(name test_name)
+void* tests::init(name_t test_name)
 {
     switch (test_name)
     {
@@ -151,7 +151,7 @@ void tests::render(void* test, void** test_loc, bool* window_cross)
     }
 
     // this assumes that each test struct's first field is the name
-    name test_name = *(name*)test;
+    name_t test_name = *(name_t*)test;
 
     switch (test_name)
     {
@@ -259,7 +259,7 @@ void tests::destroy(void* test)
     }
 
     // cast it to any arbitrary test to *only* access the name member
-    name name = ((clear_color*)test)->name;
+    name_t name = ((clear_color*)test)->name;
 
     // find out the type of the test and delete accordingly
     switch (name)
