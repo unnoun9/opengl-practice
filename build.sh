@@ -4,7 +4,7 @@
 # run dependencies.sh before this
 # on linux, install glfw using the package manager
 
-cc="g++"
+cc="clang++"
 flags="-std=c++11 -g"
 src="src/main.cpp dependencies/obj/*.o"
 output="application"
